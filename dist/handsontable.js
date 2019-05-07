@@ -24,7 +24,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * 
  * Version: 6.2.2
- * Release date: 19/12/2018 (built at 18/12/2018 14:40:17)
+ * Release date: 19/12/2018 (built at 07/05/2019 10:19:23)
  */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
@@ -4620,8 +4620,8 @@ var REGISTERED_HOOKS = [
  * fired when {@link Options#manualColumnResize} option is enabled.
  *
  * @event Hooks#beforeColumnResize
- * @param {Number} currentColumn Visual index of the resized column.
  * @param {Number} newSize Calculated new column width.
+ * @param {Number} currentColumn Visual index of the resized column.
  * @param {Boolean} isDoubleClick Flag that determines whether there was a double-click.
  * @returns {Number} Returns a new column size or `undefined`, if column size should be calculated automatically.
  */
@@ -4631,8 +4631,8 @@ var REGISTERED_HOOKS = [
  * fired when {@link Options#manualColumnResize} option is enabled.
  *
  * @event Hooks#afterColumnResize
- * @param {Number} currentColumn Visual index of the resized column.
  * @param {Number} newSize Calculated new column width.
+ * @param {Number} currentColumn Visual index of the resized column.
  * @param {Boolean} isDoubleClick Flag that determines whether there was a double-click.
  */
 'afterColumnResize',
@@ -4641,8 +4641,8 @@ var REGISTERED_HOOKS = [
  * fired when {@link Options#manualRowResize} option is enabled.
  *
  * @event Hooks#beforeRowResize
- * @param {Number} currentRow Visual index of the resized row.
  * @param {Number} newSize Calculated new row height.
+ * @param {Number} currentRow Visual index of the resized row.
  * @param {Boolean} isDoubleClick Flag that determines whether there was a double-click.
  * @returns {Number} Returns the new row size or `undefined` if row size should be calculated automatically.
  */
@@ -4652,8 +4652,8 @@ var REGISTERED_HOOKS = [
  * fired when {@link Options#manualRowResize} option is enabled.
  *
  * @event Hooks#afterRowResize
- * @param {Number} currentRow Visual index of the resized row.
  * @param {Number} newSize Calculated new row height.
+ * @param {Number} currentRow Visual index of the resized row.
  * @param {Boolean} isDoubleClick Flag that determines whether there was a double-click.
  */
 'afterRowResize',
@@ -15783,8 +15783,7 @@ function () {
       }
 
       (0, _array.arrayEach)(this.rows, function (row) {
-        // -1 <- reduce border-top from table
-        callback(row.row, (0, _element.outerHeight)(row.table) - 1);
+        callback(row.row, (0, _element.outerHeight)(row.table));
       });
     }
     /**
@@ -21972,9 +21971,10 @@ function () {
 
       if (oversizedHeight !== void 0) {
         height = height === void 0 ? oversizedHeight : Math.max(height, oversizedHeight);
-      }
+      } // at least 1
 
-      return height;
+
+      return Math.max(height, 1);
     }
   }, {
     key: "getColumnHeaderHeight",
@@ -22009,7 +22009,7 @@ function () {
         width = width[sourceColumn];
       }
 
-      return width || this.wot.wtSettings.settings.defaultColumnWidth;
+      return width !== void 0 ? width : this.wot.wtSettings.settings.defaultColumnWidth;
     }
   }, {
     key: "getStretchedColumnWidth",
@@ -22205,11 +22205,10 @@ function () {
         this.adjustAvailableNodes();
       }
 
-      this.removeRedundantRows(rowsToRender);
-
-      if (!this.wtTable.isWorkingOnClone() || this.wot.isOverlayName(_base.default.CLONE_BOTTOM)) {
-        this.markOversizedRows();
-      }
+      this.removeRedundantRows(rowsToRender); // Don't calculate oversizedRows
+      // if (!this.wtTable.isWorkingOnClone() || this.wot.isOverlayName(Overlay.CLONE_BOTTOM)) {
+      //   this.markOversizedRows();
+      // }
 
       if (!this.wtTable.isWorkingOnClone()) {
         this.wot.wtViewport.createVisibleCalculators();
@@ -22276,8 +22275,7 @@ function () {
     value: function renderRows(totalRows, rowsToRender, columnsToRender) {
       var TR;
       var visibleRowIndex = 0;
-      var sourceRowIndex = this.rowFilter.renderedToSource(visibleRowIndex);
-      var isWorkingOnClone = this.wtTable.isWorkingOnClone();
+      var sourceRowIndex = this.rowFilter.renderedToSource(visibleRowIndex); // const isWorkingOnClone = this.wtTable.isWorkingOnClone();
 
       while (sourceRowIndex < totalRows && sourceRowIndex >= 0) {
         if (!performanceWarningAppeared && visibleRowIndex > 1000) {
@@ -22296,13 +22294,13 @@ function () {
 
         this.adjustColumns(TR, columnsToRender + this.rowHeaderCount); // Render cells
 
-        this.renderCells(sourceRowIndex, TR, columnsToRender);
-
-        if (!isWorkingOnClone || // Necessary to refresh oversized row heights after editing cell in overlays
-        this.wot.isOverlayName(_base.default.CLONE_BOTTOM)) {
-          // Reset the oversized row cache for this row
-          this.resetOversizedRow(sourceRowIndex);
-        }
+        this.renderCells(sourceRowIndex, TR, columnsToRender); // Don't calculate oversizedRows
+        // if (!isWorkingOnClone ||
+        //     // Necessary to refresh oversized row heights after editing cell in overlays
+        //     this.wot.isOverlayName(Overlay.CLONE_BOTTOM)) {
+        //   // Reset the oversized row cache for this row
+        //   this.resetOversizedRow(sourceRowIndex);
+        // }
 
         if (TR.firstChild) {
           // if I have 2 fixed columns with one-line content and the 3rd column has a multiline content, this is
@@ -22313,6 +22311,30 @@ function () {
             // Decrease height. 1 pixel will be "replaced" by 1px border top
             height -= 1;
             TR.firstChild.style.height = "".concat(height, "px");
+
+            if (!this.wot.wtTable.wtRootElement.parentNode.classList.contains('htMenu')) {
+              // 此处假设默认的行高21不被修改，即不会修改CSS中的样式
+              if (height < 22) {
+                TR.firstChild.style.lineHeight = "".concat(height, "px");
+                var nextSibling = TR.firstChild.nextElementSibling;
+
+                while (nextSibling) {
+                  nextSibling.style.height = "".concat(height, "px");
+                  nextSibling.style.lineHeight = "".concat(height, "px");
+                  nextSibling = nextSibling.nextElementSibling;
+                }
+
+                if (height === 0) {
+                  TR.firstChild.style.border = 'none';
+                  nextSibling = TR.firstChild.nextElementSibling;
+
+                  while (nextSibling) {
+                    nextSibling.style.border = 'none';
+                    nextSibling = nextSibling.nextElementSibling;
+                  }
+                }
+              }
+            }
           } else {
             TR.firstChild.style.height = '';
           }
@@ -29734,7 +29756,7 @@ Handsontable.DefaultSettings = _defaultSettings.default;
 Handsontable.EventManager = _eventManager.default;
 Handsontable._getListenersCounter = _eventManager.getListenersCounter; // For MemoryLeak tests
 
-Handsontable.buildDate = "18/12/2018 14:40:17";
+Handsontable.buildDate = "07/05/2019 10:19:23";
 Handsontable.packageName = "handsontable";
 Handsontable.version = "6.2.2";
 var baseVersion = "";
@@ -34541,7 +34563,8 @@ function (_Overlay) {
       var sum = 0;
 
       while (column < to) {
-        sum += this.wot.wtTable.getStretchedColumnWidth(column) || defaultColumnWidth;
+        var columnwidth = this.wot.wtTable.getStretchedColumnWidth(column);
+        sum += columnwidth !== void 0 ? columnwidth : defaultColumnWidth;
         column += 1;
       }
 
@@ -34591,7 +34614,7 @@ function (_Overlay) {
 
       this.clone.wtTable.holder.style.height = overlayRootStyle.height;
       var tableWidth = (0, _element.outerWidth)(this.clone.wtTable.TABLE);
-      overlayRootStyle.width = "".concat(tableWidth === 0 ? tableWidth : tableWidth + 4, "px");
+      overlayRootStyle.width = "".concat(tableWidth === 0 ? tableWidth : tableWidth, "px");
     }
     /**
      * Adjust overlay root childs size.
@@ -34963,7 +34986,7 @@ function (_Overlay) {
 
       this.clone.wtTable.holder.style.width = overlayRootStyle.width;
       var tableHeight = (0, _element.outerHeight)(this.clone.wtTable.TABLE);
-      overlayRootStyle.height = "".concat(tableHeight === 0 ? tableHeight : tableHeight + 4, "px");
+      overlayRootStyle.height = "".concat(tableHeight === 0 ? tableHeight : tableHeight, "px");
     }
     /**
      * Adjust overlay root childs size.
@@ -35283,8 +35306,8 @@ function (_Overlay) {
         (0, _element.resetCssTransform)(overlayRoot);
       }
 
-      overlayRoot.style.height = "".concat(tableHeight === 0 ? tableHeight : tableHeight + 4, "px");
-      overlayRoot.style.width = "".concat(tableWidth === 0 ? tableWidth : tableWidth + 4, "px");
+      overlayRoot.style.height = "".concat(tableHeight === 0 ? tableHeight : tableHeight, "px");
+      overlayRoot.style.width = "".concat(tableWidth === 0 ? tableWidth : tableWidth, "px");
     }
   }]);
 
@@ -36790,7 +36813,7 @@ module.exports = __WEBPACK_EXTERNAL_MODULE_370__;
 /* 371 */
 /***/ (function(module, exports) {
 
-
+// removed by extract-text-webpack-plugin
 
 /***/ }),
 /* 372 */
@@ -43270,8 +43293,8 @@ function (_BasePlugin) {
 
     _this.inProgress = false; // moved to constructor to allow auto-sizing the columns when the plugin is disabled
 
-    _this.addHook('beforeColumnResize', function (col, size, isDblClick) {
-      return _this.onBeforeColumnResize(col, size, isDblClick);
+    _this.addHook('beforeColumnResize', function (size, col, isDblClick) {
+      return _this.onBeforeColumnResize(size, col, isDblClick);
     });
 
     return _this;
@@ -43744,15 +43767,15 @@ function (_BasePlugin) {
      * On before column resize listener.
      *
      * @private
-     * @param {Number} col
      * @param {Number} size
+     * @param {Number} col
      * @param {Boolean} isDblClick
      * @returns {Number}
      */
 
   }, {
     key: "onBeforeColumnResize",
-    value: function onBeforeColumnResize(col, size, isDblClick) {
+    value: function onBeforeColumnResize(size, col, isDblClick) {
       var newSize = size;
 
       if (isDblClick) {
@@ -44800,8 +44823,8 @@ function (_BasePlugin) {
 
     _this.inProgress = false; // moved to constructor to allow auto-sizing the rows when the plugin is disabled
 
-    _this.addHook('beforeRowResize', function (row, size, isDblClick) {
-      return _this.onBeforeRowResize(row, size, isDblClick);
+    _this.addHook('beforeRowResize', function (size, row, isDblClick) {
+      return _this.onBeforeRowResize(size, row, isDblClick);
     });
 
     return _this;
@@ -45235,15 +45258,15 @@ function (_BasePlugin) {
      * On before row resize listener.
      *
      * @private
-     * @param {Number} row
      * @param {Number} size
+     * @param {Number} row
      * @param {Boolean} isDblClick
      * @returns {Number}
      */
 
   }, {
     key: "onBeforeRowResize",
-    value: function onBeforeRowResize(row, size, isDblClick) {
+    value: function onBeforeRowResize(size, row, isDblClick) {
       var newSize = size;
 
       if (isDblClick) {
@@ -55767,6 +55790,7 @@ function (_BasePlugin) {
     _this.startOffset = null;
     _this.handle = document.createElement('DIV');
     _this.guide = document.createElement('DIV');
+    _this.tooltip = document.createElement('DIV');
     _this.eventManager = new _eventManager.default(_assertThisInitialized(_assertThisInitialized(_this)));
     _this.pressed = null;
     _this.dblclick = 0;
@@ -55774,6 +55798,7 @@ function (_BasePlugin) {
     _this.manualColumnWidths = [];
     (0, _element.addClass)(_this.handle, 'manualColumnResizer');
     (0, _element.addClass)(_this.guide, 'manualColumnResizerGuide');
+    (0, _element.addClass)(_this.tooltip, 'manualColumnResizerTooltip');
     return _this;
   }
   /**
@@ -55883,25 +55908,43 @@ function (_BasePlugin) {
      *
      * @private
      * @param {HTMLCellElement} TH TH HTML element.
+     * @param {MouseEvent} event
      */
 
   }, {
     key: "setupHandlePosition",
-    value: function setupHandlePosition(TH) {
+    value: function setupHandlePosition(TH, event) {
       var _this3 = this;
 
       if (!TH.parentNode) {
         return false;
       }
 
-      this.currentTH = TH;
       var col = this.hot.view.wt.wtTable.getCoords(TH).col; // getCoords returns CellCoords
 
+      var box; // 排除左上角单元格
+
+      if (col < 0) {
+        return;
+      }
+
+      if (col > 0) {
+        box = TH.getBoundingClientRect();
+        var center = (box.left + box.right) / 2;
+
+        if (event.clientX < center) {
+          TH = TH.previousElementSibling;
+          col -= 1;
+          box = null;
+        }
+      }
+
+      this.currentTH = TH;
       var headerHeight = (0, _element.outerHeight)(this.currentTH);
 
       if (col >= 0) {
         // if not col header
-        var box = this.currentTH.getBoundingClientRect();
+        box = box || this.currentTH.getBoundingClientRect();
         this.currentCol = col;
         this.selectedCols = [];
 
@@ -55979,6 +56022,35 @@ function (_BasePlugin) {
       this.guide.style.left = this.handle.style.left;
     }
     /**
+     * Sets the resize tooltip position and content.
+     *
+     * @private
+     */
+
+  }, {
+    key: "setupTooltipPosition",
+    value: function setupTooltipPosition() {
+      var handleHeight = parseInt((0, _element.outerHeight)(this.handle), 10);
+      var handleBottomPosition = parseInt(this.handle.style.top, 10) + handleHeight;
+      (0, _element.addClass)(this.tooltip, 'active');
+      this.tooltip.innerText = "\u5BBD\u5EA6: ".concat((this.newSize * 3 / 4).toFixed(2), " (").concat(this.newSize, " \u50CF\u7D20)");
+      this.tooltip.style.top = "".concat(handleBottomPosition, "px");
+      this.tooltip.style.left = this.handle.style.left;
+      this.hot.rootElement.appendChild(this.tooltip);
+    }
+    /**
+     * Refresh the resize tooltip position and content.
+     *
+     * @private
+     */
+
+  }, {
+    key: "refreshTooltipPosition",
+    value: function refreshTooltipPosition() {
+      this.tooltip.innerText = "\u5BBD\u5EA6: ".concat((this.newSize * 3 / 4).toFixed(2), " (").concat(this.newSize, " \u50CF\u7D20)");
+      this.tooltip.style.left = this.handle.style.left;
+    }
+    /**
      * Hides both the resize handle and resize guide.
      *
      * @private
@@ -55989,6 +56061,7 @@ function (_BasePlugin) {
     value: function hideHandleAndGuide() {
       (0, _element.removeClass)(this.handle, 'active');
       (0, _element.removeClass)(this.guide, 'active');
+      (0, _element.removeClass)(this.tooltip, 'active');
     }
     /**
      * Checks if provided element is considered a column header.
@@ -56044,18 +56117,27 @@ function (_BasePlugin) {
   }, {
     key: "onMouseOver",
     value: function onMouseOver(event) {
-      if (this.checkIfColumnHeader(event.target)) {
-        var th = this.getTHFromTargetElement(event.target);
+      if (!this.pressed) {
+        var th;
 
-        if (!th) {
-          return;
+        if (this.checkIfColumnHeader(event.target)) {
+          th = this.getTHFromTargetElement(event.target);
+        } else if ((0, _element.hasClass)(event.target, 'manualColumnResizer')) {
+          var prevTH = this.hot.view.wt.wtTable.getColumnHeader(this.currentCol - 1);
+          var nextTH = this.hot.view.wt.wtTable.getColumnHeader(this.currentCol + 1);
+
+          if (prevTH && prevTH.getBoundingClientRect().right > event.clientX) {
+            th = prevTH;
+          } else if (nextTH && nextTH.getBoundingClientRect().left < event.clientX) {
+            th = nextTH;
+          }
         }
 
-        var colspan = th.getAttribute('colspan');
+        if (th) {
+          var colspan = th.getAttribute('colspan');
 
-        if (th && (colspan === null || colspan === 1)) {
-          if (!this.pressed) {
-            this.setupHandlePosition(th);
+          if (colspan === null || colspan === 1) {
+            this.setupHandlePosition(th, event);
           }
         }
       }
@@ -56084,7 +56166,7 @@ function (_BasePlugin) {
       };
 
       var resize = function resize(selectedCol, forceRender) {
-        var hookNewSize = _this4.hot.runHooks('beforeColumnResize', selectedCol, _this4.newSize, true);
+        var hookNewSize = _this4.hot.runHooks('beforeColumnResize', _this4.newSize, selectedCol, true);
 
         if (hookNewSize !== void 0) {
           _this4.newSize = hookNewSize;
@@ -56093,7 +56175,7 @@ function (_BasePlugin) {
         if (_this4.hot.getSettings().stretchH === 'all') {
           _this4.clearManualSize(selectedCol);
         } else {
-          _this4.setManualSize(selectedCol, _this4.newSize); // double click sets by auto row size plugin
+          _this4.setManualSize(_this4.newSize, selectedCol); // double click sets by auto row size plugin
 
         }
 
@@ -56103,7 +56185,7 @@ function (_BasePlugin) {
 
         _this4.saveManualColumnWidths();
 
-        _this4.hot.runHooks('afterColumnResize', selectedCol, _this4.newSize, true);
+        _this4.hot.runHooks('afterColumnResize', _this4.newSize, selectedCol, true);
       };
 
       if (this.dblclick >= 2) {
@@ -56137,7 +56219,10 @@ function (_BasePlugin) {
       var _this5 = this;
 
       if ((0, _element.hasClass)(event.target, 'manualColumnResizer')) {
+        this.startX = (0, _event.pageX)(event);
+        this.newSize = this.startWidth;
         this.setupGuidePosition();
+        this.setupTooltipPosition();
         this.pressed = this.hot;
 
         if (this.autoresizeTimeout === null) {
@@ -56149,8 +56234,6 @@ function (_BasePlugin) {
         }
 
         this.dblclick += 1;
-        this.startX = (0, _event.pageX)(event);
-        this.newSize = this.startWidth;
       }
     }
     /**
@@ -56168,16 +56251,18 @@ function (_BasePlugin) {
       if (this.pressed) {
         this.currentWidth = this.startWidth + ((0, _event.pageX)(event) - this.startX);
         (0, _array.arrayEach)(this.selectedCols, function (selectedCol) {
-          _this6.newSize = _this6.setManualSize(selectedCol, _this6.currentWidth);
+          _this6.newSize = _this6.setManualSize(_this6.currentWidth, selectedCol);
         });
         this.refreshHandlePosition();
         this.refreshGuidePosition();
+        this.refreshTooltipPosition();
       }
     }
     /**
      * 'mouseup' event callback - apply the column resizing.
      *
      * @private
+     * @param {MouseEvent} event
      *
      * @fires Hooks#beforeColumnResize
      * @fires Hooks#afterColumnResize
@@ -56185,7 +56270,7 @@ function (_BasePlugin) {
 
   }, {
     key: "onMouseUp",
-    value: function onMouseUp() {
+    value: function onMouseUp(event) {
       var _this7 = this;
 
       var render = function render() {
@@ -56198,7 +56283,7 @@ function (_BasePlugin) {
       };
 
       var resize = function resize(selectedCol, forceRender) {
-        _this7.hot.runHooks('beforeColumnResize', selectedCol, _this7.newSize, false);
+        _this7.hot.runHooks('beforeColumnResize', _this7.newSize, selectedCol, false);
 
         if (forceRender) {
           render();
@@ -56206,7 +56291,7 @@ function (_BasePlugin) {
 
         _this7.saveManualColumnWidths();
 
-        _this7.hot.runHooks('afterColumnResize', selectedCol, _this7.newSize);
+        _this7.hot.runHooks('afterColumnResize', _this7.newSize, selectedCol);
       };
 
       if (this.pressed) {
@@ -56228,7 +56313,7 @@ function (_BasePlugin) {
           }
         }
 
-        this.setupHandlePosition(this.currentTH);
+        this.setupHandlePosition(this.currentTH, event);
       }
     }
     /**
@@ -56242,7 +56327,7 @@ function (_BasePlugin) {
     value: function bindEvents() {
       var _this8 = this;
 
-      this.eventManager.addEventListener(this.hot.rootElement, 'mouseover', function (e) {
+      this.eventManager.addEventListener(this.hot.rootElement, 'mousemove', function (e) {
         return _this8.onMouseOver(e);
       });
       this.eventManager.addEventListener(this.hot.rootElement, 'mousedown', function (e) {
@@ -56251,29 +56336,31 @@ function (_BasePlugin) {
       this.eventManager.addEventListener(window, 'mousemove', function (e) {
         return _this8.onMouseMove(e);
       });
-      this.eventManager.addEventListener(window, 'mouseup', function () {
-        return _this8.onMouseUp();
+      this.eventManager.addEventListener(window, 'mouseup', function (e) {
+        return _this8.onMouseUp(e);
       });
     }
     /**
      * Sets the new width for specified column index.
      *
+     * @param {Number} width Column width.
      * @param {Number} column Visual column index.
-     * @param {Number} width Column width (no less than 20px).
      * @returns {Number} Returns new width.
+     *
+     * @fires Hooks#modifyCol
      */
 
   }, {
     key: "setManualSize",
-    value: function setManualSize(column, width) {
-      var newWidth = Math.max(width, 20);
+    value: function setManualSize(width, column) {
+      var newWidth = Math.max(width, 0);
       /**
        *  We need to run col through modifyCol hook, in case the order of displayed columns is different than the order
        *  in data source. For instance, this order can be modified by manualColumnMove plugin.
        */
 
-      var physicalColumn = this.hot.runHooks('modifyCol', column);
-      this.manualColumnWidths[physicalColumn] = newWidth;
+      this.hot.runHooks('modifyCol', column); // this.manualColumnWidths[physicalColumn] = newWidth;
+
       return newWidth;
     }
     /**
@@ -57594,6 +57681,7 @@ function (_BasePlugin) {
     _this.startOffset = null;
     _this.handle = document.createElement('DIV');
     _this.guide = document.createElement('DIV');
+    _this.tooltip = document.createElement('DIV');
     _this.eventManager = new _eventManager.default(_assertThisInitialized(_assertThisInitialized(_this)));
     _this.pressed = null;
     _this.dblclick = 0;
@@ -57601,6 +57689,7 @@ function (_BasePlugin) {
     _this.manualRowHeights = [];
     (0, _element.addClass)(_this.handle, 'manualRowResizer');
     (0, _element.addClass)(_this.guide, 'manualRowResizerGuide');
+    (0, _element.addClass)(_this.tooltip, 'manualRowResizerTooltip');
     return _this;
   }
   /**
@@ -57705,21 +57794,39 @@ function (_BasePlugin) {
      *
      * @private
      * @param {HTMLCellElement} TH TH HTML element.
+     * @param {MouseEvent} event
      */
 
   }, {
     key: "setupHandlePosition",
-    value: function setupHandlePosition(TH) {
+    value: function setupHandlePosition(TH, event) {
       var _this3 = this;
 
-      this.currentTH = TH;
+      if (!TH.parentNode) {
+        return false;
+      }
+
       var row = this.hot.view.wt.wtTable.getCoords(TH).row; // getCoords returns CellCoords
 
+      var box;
+
+      if (row > 0) {
+        box = TH.getBoundingClientRect();
+        var center = (box.top + box.bottom) / 2;
+
+        if (event.clientY < center) {
+          TH = TH.parentElement.previousElementSibling.firstChild;
+          row -= 1;
+          box = null;
+        }
+      }
+
+      this.currentTH = TH;
       var headerWidth = (0, _element.outerWidth)(this.currentTH);
 
       if (row >= 0) {
         // if not col header
-        var box = this.currentTH.getBoundingClientRect();
+        box = box || this.currentTH.getBoundingClientRect();
         this.currentRow = row;
         this.selectedRows = [];
 
@@ -57797,6 +57904,35 @@ function (_BasePlugin) {
       this.guide.style.top = this.handle.style.top;
     }
     /**
+     * Sets the resize tooltip position and content.
+     *
+     * @private
+     */
+
+  }, {
+    key: "setupTooltipPosition",
+    value: function setupTooltipPosition() {
+      var handleWidth = parseInt((0, _element.outerWidth)(this.handle), 10);
+      var handleRightPosition = parseInt(this.handle.style.left, 10) + handleWidth;
+      (0, _element.addClass)(this.tooltip, 'active');
+      this.tooltip.innerText = "\u9AD8\u5EA6: ".concat((this.newSize * 3 / 4).toFixed(2), " (").concat(this.newSize, " \u50CF\u7D20)");
+      this.tooltip.style.top = this.handle.style.top;
+      this.tooltip.style.left = "".concat(handleRightPosition, "px");
+      this.hot.rootElement.appendChild(this.tooltip);
+    }
+    /**
+     * Refresh the resize tooltip position and content.
+     *
+     * @private
+     */
+
+  }, {
+    key: "refreshTooltipPosition",
+    value: function refreshTooltipPosition() {
+      this.tooltip.innerText = "\u9AD8\u5EA6: ".concat((this.newSize * 3 / 4).toFixed(2), " (").concat(this.newSize, " \u50CF\u7D20)");
+      this.tooltip.style.top = this.handle.style.top;
+    }
+    /**
      * Hides both the resize handle and resize guide.
      *
      * @private
@@ -57807,6 +57943,7 @@ function (_BasePlugin) {
     value: function hideHandleAndGuide() {
       (0, _element.removeClass)(this.handle, 'active');
       (0, _element.removeClass)(this.guide, 'active');
+      (0, _element.removeClass)(this.tooltip, 'active');
     }
     /**
      * Checks if provided element is considered as a row header.
@@ -57862,13 +57999,24 @@ function (_BasePlugin) {
   }, {
     key: "onMouseOver",
     value: function onMouseOver(event) {
-      if (this.checkIfRowHeader(event.target)) {
-        var th = this.getTHFromTargetElement(event.target);
+      if (!this.pressed) {
+        var th;
+
+        if (this.checkIfRowHeader(event.target)) {
+          th = this.getTHFromTargetElement(event.target);
+        } else if ((0, _element.hasClass)(event.target, 'manualRowResizer')) {
+          var prevTH = this.hot.view.wt.wtTable.getRowHeader(this.currentRow - 1);
+          var nextTH = this.hot.view.wt.wtTable.getRowHeader(this.currentRow + 1);
+
+          if (prevTH && prevTH.getBoundingClientRect().bottom > event.clientY) {
+            th = prevTH;
+          } else if (nextTH && nextTH.getBoundingClientRect().top < event.clientY) {
+            th = nextTH;
+          }
+        }
 
         if (th) {
-          if (!this.pressed) {
-            this.setupHandlePosition(th);
-          }
+          this.setupHandlePosition(th, event);
         }
       }
     }
@@ -57895,20 +58043,20 @@ function (_BasePlugin) {
       };
 
       var resize = function resize(selectedRow, forceRender) {
-        var hookNewSize = _this4.hot.runHooks('beforeRowResize', selectedRow, _this4.newSize, true);
+        var hookNewSize = _this4.hot.runHooks('beforeRowResize', _this4.newSize, selectedRow, true);
 
         if (hookNewSize !== void 0) {
           _this4.newSize = hookNewSize;
         }
 
-        _this4.setManualSize(selectedRow, _this4.newSize); // double click sets auto row size
+        _this4.setManualSize(_this4.newSize, selectedRow); // double click sets auto row size
 
 
         if (forceRender) {
           render();
         }
 
-        _this4.hot.runHooks('afterRowResize', selectedRow, _this4.newSize, true);
+        _this4.hot.runHooks('afterRowResize', _this4.newSize, selectedRow, true);
       };
 
       if (this.dblclick >= 2) {
@@ -57942,7 +58090,10 @@ function (_BasePlugin) {
       var _this5 = this;
 
       if ((0, _element.hasClass)(event.target, 'manualRowResizer')) {
+        this.startY = (0, _event.pageY)(event);
+        this.newSize = this.startHeight;
         this.setupGuidePosition();
+        this.setupTooltipPosition();
         this.pressed = this.hot;
 
         if (this.autoresizeTimeout === null) {
@@ -57954,8 +58105,6 @@ function (_BasePlugin) {
         }
 
         this.dblclick += 1;
-        this.startY = (0, _event.pageY)(event);
-        this.newSize = this.startHeight;
       }
     }
     /**
@@ -57973,16 +58122,18 @@ function (_BasePlugin) {
       if (this.pressed) {
         this.currentHeight = this.startHeight + ((0, _event.pageY)(event) - this.startY);
         (0, _array.arrayEach)(this.selectedRows, function (selectedRow) {
-          _this6.newSize = _this6.setManualSize(selectedRow, _this6.currentHeight);
+          _this6.newSize = _this6.setManualSize(_this6.currentHeight, selectedRow);
         });
         this.refreshHandlePosition();
         this.refreshGuidePosition();
+        this.refreshTooltipPosition();
       }
     }
     /**
      * 'mouseup' event callback - apply the row resizing.
      *
      * @private
+     * @param {MouseEvent} event
      *
      * @fires Hooks#beforeRowResize
      * @fires Hooks#afterRowResize
@@ -57990,7 +58141,7 @@ function (_BasePlugin) {
 
   }, {
     key: "onMouseUp",
-    value: function onMouseUp() {
+    value: function onMouseUp(event) {
       var _this7 = this;
 
       var render = function render() {
@@ -58003,7 +58154,7 @@ function (_BasePlugin) {
       };
 
       var runHooks = function runHooks(selectedRow, forceRender) {
-        _this7.hot.runHooks('beforeRowResize', selectedRow, _this7.newSize);
+        _this7.hot.runHooks('beforeRowResize', _this7.newSize, selectedRow);
 
         if (forceRender) {
           render();
@@ -58011,7 +58162,7 @@ function (_BasePlugin) {
 
         _this7.saveManualRowHeights();
 
-        _this7.hot.runHooks('afterRowResize', selectedRow, _this7.newSize, false);
+        _this7.hot.runHooks('afterRowResize', _this7.newSize, selectedRow, false);
       };
 
       if (this.pressed) {
@@ -58033,7 +58184,7 @@ function (_BasePlugin) {
           }
         }
 
-        this.setupHandlePosition(this.currentTH);
+        this.setupHandlePosition(this.currentTH, event);
       }
     }
     /**
@@ -58047,7 +58198,7 @@ function (_BasePlugin) {
     value: function bindEvents() {
       var _this8 = this;
 
-      this.eventManager.addEventListener(this.hot.rootElement, 'mouseover', function (e) {
+      this.eventManager.addEventListener(this.hot.rootElement, 'mousemove', function (e) {
         return _this8.onMouseOver(e);
       });
       this.eventManager.addEventListener(this.hot.rootElement, 'mousedown', function (e) {
@@ -58056,15 +58207,15 @@ function (_BasePlugin) {
       this.eventManager.addEventListener(window, 'mousemove', function (e) {
         return _this8.onMouseMove(e);
       });
-      this.eventManager.addEventListener(window, 'mouseup', function () {
-        return _this8.onMouseUp();
+      this.eventManager.addEventListener(window, 'mouseup', function (e) {
+        return _this8.onMouseUp(e);
       });
     }
     /**
      * Sets the new height for specified row index.
      *
-     * @param {Number} row Visual row index.
      * @param {Number} height Row height.
+     * @param {Number} row Visual row index.
      * @returns {Number} Returns new height.
      *
      * @fires Hooks#modifyRow
@@ -58072,10 +58223,11 @@ function (_BasePlugin) {
 
   }, {
     key: "setManualSize",
-    value: function setManualSize(row, height) {
-      var physicalRow = this.hot.runHooks('modifyRow', row);
-      this.manualRowHeights[physicalRow] = height;
-      return height;
+    value: function setManualSize(height, row) {
+      var newHeight = Math.max(height, 0);
+      this.hot.runHooks('modifyRow', row); // this.manualRowHeights[physicalRow] = newHeight;
+
+      return newHeight;
     }
     /**
      * Modifies the provided row height, based on the plugin settings.

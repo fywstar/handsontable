@@ -141,8 +141,7 @@ class GhostTable {
       this.injectTable();
     }
     arrayEach(this.rows, (row) => {
-      // -1 <- reduce border-top from table
-      callback(row.row, outerHeight(row.table) - 1);
+      callback(row.row, outerHeight(row.table));
     });
   }
 

@@ -114,7 +114,8 @@ class LeftOverlay extends Overlay {
     let sum = 0;
 
     while (column < to) {
-      sum += this.wot.wtTable.getStretchedColumnWidth(column) || defaultColumnWidth;
+      const columnwidth = this.wot.wtTable.getStretchedColumnWidth(column);
+      sum += columnwidth !== void 0 ? columnwidth : defaultColumnWidth;
       column += 1;
     }
 
@@ -163,7 +164,7 @@ class LeftOverlay extends Overlay {
     this.clone.wtTable.holder.style.height = overlayRootStyle.height;
 
     const tableWidth = outerWidth(this.clone.wtTable.TABLE);
-    overlayRootStyle.width = `${tableWidth === 0 ? tableWidth : tableWidth + 4}px`;
+    overlayRootStyle.width = `${tableWidth === 0 ? tableWidth : tableWidth}px`;
   }
 
   /**

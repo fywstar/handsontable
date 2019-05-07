@@ -33,6 +33,7 @@ class ManualColumnResize extends BasePlugin {
     this.startOffset = null;
     this.handle = document.createElement('DIV');
     this.guide = document.createElement('DIV');
+    this.tooltip = document.createElement('DIV');
     this.eventManager = new EventManager(this);
     this.pressed = null;
     this.dblclick = 0;
@@ -41,6 +42,7 @@ class ManualColumnResize extends BasePlugin {
 
     addClass(this.handle, 'manualColumnResizer');
     addClass(this.guide, 'manualColumnResizerGuide');
+    addClass(this.tooltip, 'manualColumnResizerTooltip');
   }
 
   /**
@@ -134,19 +136,36 @@ class ManualColumnResize extends BasePlugin {
    *
    * @private
    * @param {HTMLCellElement} TH TH HTML element.
+   * @param {MouseEvent} event
    */
-  setupHandlePosition(TH) {
+  setupHandlePosition(TH, event) {
     if (!TH.parentNode) {
       return false;
     }
 
-    this.currentTH = TH;
+    let col = this.hot.view.wt.wtTable.getCoords(TH).col; // getCoords returns CellCoords
+    let box;
 
-    const col = this.hot.view.wt.wtTable.getCoords(TH).col; // getCoords returns CellCoords
+    // 排除左上角单元格
+    if (col < 0) {
+      return;
+    }
+
+    if (col > 0) {
+      box = TH.getBoundingClientRect();
+      const center = (box.left + box.right) / 2;
+      if (event.clientX < center) {
+        TH = TH.previousElementSibling;
+        col -= 1;
+        box = null;
+      }
+    }
+
+    this.currentTH = TH;
     const headerHeight = outerHeight(this.currentTH);
 
     if (col >= 0) { // if not col header
-      const box = this.currentTH.getBoundingClientRect();
+      box = box || this.currentTH.getBoundingClientRect();
 
       this.currentCol = col;
       this.selectedCols = [];
@@ -218,6 +237,33 @@ class ManualColumnResize extends BasePlugin {
   }
 
   /**
+   * Sets the resize tooltip position and content.
+   *
+   * @private
+   */
+  setupTooltipPosition() {
+    const handleHeight = parseInt(outerHeight(this.handle), 10);
+    const handleBottomPosition = parseInt(this.handle.style.top, 10) + handleHeight;
+    addClass(this.tooltip, 'active');
+
+    this.tooltip.innerText = `宽度: ${(this.newSize * 3 / 4).toFixed(2)} (${this.newSize} 像素)`;
+
+    this.tooltip.style.top = `${handleBottomPosition}px`;
+    this.tooltip.style.left = this.handle.style.left;
+    this.hot.rootElement.appendChild(this.tooltip);
+  }
+
+  /**
+   * Refresh the resize tooltip position and content.
+   *
+   * @private
+   */
+  refreshTooltipPosition() {
+    this.tooltip.innerText = `宽度: ${(this.newSize * 3 / 4).toFixed(2)} (${this.newSize} 像素)`;
+    this.tooltip.style.left = this.handle.style.left;
+  }
+
+  /**
    * Hides both the resize handle and resize guide.
    *
    * @private
@@ -225,6 +271,7 @@ class ManualColumnResize extends BasePlugin {
   hideHandleAndGuide() {
     removeClass(this.handle, 'active');
     removeClass(this.guide, 'active');
+    removeClass(this.tooltip, 'active');
   }
 
   /**
@@ -274,18 +321,27 @@ class ManualColumnResize extends BasePlugin {
    * @param {MouseEvent} event
    */
   onMouseOver(event) {
-    if (this.checkIfColumnHeader(event.target)) {
-      const th = this.getTHFromTargetElement(event.target);
+    if (!this.pressed) {
+      let th;
 
-      if (!th) {
-        return;
+      if (this.checkIfColumnHeader(event.target)) {
+        th = this.getTHFromTargetElement(event.target);
+
+      } else if (hasClass(event.target, 'manualColumnResizer')) {
+        const prevTH = this.hot.view.wt.wtTable.getColumnHeader(this.currentCol - 1);
+        const nextTH = this.hot.view.wt.wtTable.getColumnHeader(this.currentCol + 1);
+
+        if (prevTH && prevTH.getBoundingClientRect().right > event.clientX) {
+          th = prevTH;
+        } else if (nextTH && nextTH.getBoundingClientRect().left < event.clientX) {
+          th = nextTH;
+        }
       }
 
-      const colspan = th.getAttribute('colspan');
-
-      if (th && (colspan === null || colspan === 1)) {
-        if (!this.pressed) {
-          this.setupHandlePosition(th);
+      if (th) {
+        const colspan = th.getAttribute('colspan');
+        if (colspan === null || colspan === 1) {
+          this.setupHandlePosition(th, event);
         }
       }
     }
@@ -306,7 +362,7 @@ class ManualColumnResize extends BasePlugin {
       this.hot.view.wt.wtOverlays.adjustElementsSize(true);
     };
     const resize = (selectedCol, forceRender) => {
-      const hookNewSize = this.hot.runHooks('beforeColumnResize', selectedCol, this.newSize, true);
+      const hookNewSize = this.hot.runHooks('beforeColumnResize', this.newSize, selectedCol, true);
 
       if (hookNewSize !== void 0) {
         this.newSize = hookNewSize;
@@ -315,7 +371,7 @@ class ManualColumnResize extends BasePlugin {
       if (this.hot.getSettings().stretchH === 'all') {
         this.clearManualSize(selectedCol);
       } else {
-        this.setManualSize(selectedCol, this.newSize); // double click sets by auto row size plugin
+        this.setManualSize(this.newSize, selectedCol); // double click sets by auto row size plugin
       }
 
       if (forceRender) {
@@ -324,7 +380,7 @@ class ManualColumnResize extends BasePlugin {
 
       this.saveManualColumnWidths();
 
-      this.hot.runHooks('afterColumnResize', selectedCol, this.newSize, true);
+      this.hot.runHooks('afterColumnResize', this.newSize, selectedCol, true);
     };
 
     if (this.dblclick >= 2) {
@@ -353,7 +409,11 @@ class ManualColumnResize extends BasePlugin {
    */
   onMouseDown(event) {
     if (hasClass(event.target, 'manualColumnResizer')) {
+      this.startX = pageX(event);
+      this.newSize = this.startWidth;
+
       this.setupGuidePosition();
+      this.setupTooltipPosition();
       this.pressed = this.hot;
 
       if (this.autoresizeTimeout === null) {
@@ -361,10 +421,8 @@ class ManualColumnResize extends BasePlugin {
 
         this.hot._registerTimeout(this.autoresizeTimeout);
       }
-      this.dblclick += 1;
 
-      this.startX = pageX(event);
-      this.newSize = this.startWidth;
+      this.dblclick += 1;
     }
   }
 
@@ -379,11 +437,12 @@ class ManualColumnResize extends BasePlugin {
       this.currentWidth = this.startWidth + (pageX(event) - this.startX);
 
       arrayEach(this.selectedCols, (selectedCol) => {
-        this.newSize = this.setManualSize(selectedCol, this.currentWidth);
+        this.newSize = this.setManualSize(this.currentWidth, selectedCol);
       });
 
       this.refreshHandlePosition();
       this.refreshGuidePosition();
+      this.refreshTooltipPosition();
     }
   }
 
@@ -391,18 +450,19 @@ class ManualColumnResize extends BasePlugin {
    * 'mouseup' event callback - apply the column resizing.
    *
    * @private
+   * @param {MouseEvent} event
    *
    * @fires Hooks#beforeColumnResize
    * @fires Hooks#afterColumnResize
    */
-  onMouseUp() {
+  onMouseUp(event) {
     const render = () => {
       this.hot.forceFullRender = true;
       this.hot.view.render(); // updates all
       this.hot.view.wt.wtOverlays.adjustElementsSize(true);
     };
     const resize = (selectedCol, forceRender) => {
-      this.hot.runHooks('beforeColumnResize', selectedCol, this.newSize, false);
+      this.hot.runHooks('beforeColumnResize', this.newSize, selectedCol, false);
 
       if (forceRender) {
         render();
@@ -410,7 +470,7 @@ class ManualColumnResize extends BasePlugin {
 
       this.saveManualColumnWidths();
 
-      this.hot.runHooks('afterColumnResize', selectedCol, this.newSize);
+      this.hot.runHooks('afterColumnResize', this.newSize, selectedCol);
     };
 
     if (this.pressed) {
@@ -432,7 +492,7 @@ class ManualColumnResize extends BasePlugin {
         }
       }
 
-      this.setupHandlePosition(this.currentTH);
+      this.setupHandlePosition(this.currentTH, event);
     }
   }
 
@@ -442,29 +502,31 @@ class ManualColumnResize extends BasePlugin {
    * @private
    */
   bindEvents() {
-    this.eventManager.addEventListener(this.hot.rootElement, 'mouseover', e => this.onMouseOver(e));
+    this.eventManager.addEventListener(this.hot.rootElement, 'mousemove', e => this.onMouseOver(e));
     this.eventManager.addEventListener(this.hot.rootElement, 'mousedown', e => this.onMouseDown(e));
     this.eventManager.addEventListener(window, 'mousemove', e => this.onMouseMove(e));
-    this.eventManager.addEventListener(window, 'mouseup', () => this.onMouseUp());
+    this.eventManager.addEventListener(window, 'mouseup', e => this.onMouseUp(e));
   }
 
   /**
    * Sets the new width for specified column index.
    *
+   * @param {Number} width Column width.
    * @param {Number} column Visual column index.
-   * @param {Number} width Column width (no less than 20px).
    * @returns {Number} Returns new width.
+   *
+   * @fires Hooks#modifyCol
    */
-  setManualSize(column, width) {
-    const newWidth = Math.max(width, 20);
+  setManualSize(width, column) {
+    const newWidth = Math.max(width, 0);
 
     /**
      *  We need to run col through modifyCol hook, in case the order of displayed columns is different than the order
      *  in data source. For instance, this order can be modified by manualColumnMove plugin.
      */
-    const physicalColumn = this.hot.runHooks('modifyCol', column);
+    this.hot.runHooks('modifyCol', column);
 
-    this.manualColumnWidths[physicalColumn] = newWidth;
+    // this.manualColumnWidths[physicalColumn] = newWidth;
 
     return newWidth;
   }

@@ -604,7 +604,8 @@ class Table {
       height = height === void 0 ? oversizedHeight : Math.max(height, oversizedHeight);
     }
 
-    return height;
+    // at least 1
+    return Math.max(height, 1);
   }
 
   getColumnHeaderHeight(level) {
@@ -636,7 +637,7 @@ class Table {
       width = width[sourceColumn];
     }
 
-    return width || this.wot.wtSettings.settings.defaultColumnWidth;
+    return width !== void 0 ? width : this.wot.wtSettings.settings.defaultColumnWidth;
   }
 
   getStretchedColumnWidth(sourceColumn) {

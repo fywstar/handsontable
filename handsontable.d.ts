@@ -1549,7 +1549,7 @@ declare namespace Handsontable {
     afterChange?: (changes: [number, string | number, any, any][], source: string) => void;
     afterChangesObserved?: () => void;
     afterColumnMove?: (startColumn: number, endColumn: number) => void;
-    afterColumnResize?: (currentColumn: number, newSize: number, isDoubleClick: boolean) => void;
+    afterColumnResize?: (newSize: number, currentColumn: number, isDoubleClick: boolean) => void;
     afterColumnSort?: (currentSortConfig: object[], destinationSortConfigs: object[]) => void;
     afterContextMenuDefaultOptions?: (predefinedItems: any[]) => void;
     afterContextMenuHide?: (context: Handsontable.plugins.ContextMenu) => void;
@@ -1597,7 +1597,7 @@ declare namespace Handsontable {
     afterRender?: (isForced: boolean) => void;
     afterRenderer?: (TD: Element, row: number, col: number, prop: string | number, value: string, cellProperties: GridSettings) => void;
     afterRowMove?: (startRow: number, endRow: number) => void;
-    afterRowResize?: (currentRow: number, newSize: number, isDoubleClick: boolean) => void;
+    afterRowResize?: (newSize: number, currentRow: number, isDoubleClick: boolean) => void;
     afterScrollHorizontally?: () => void;
     afterScrollVertically?: () => void;
     afterSelection?: (r: number, c: number, r2: number, c2: number, preventScrolling: object, selectionLayerLevel: number) => void;
@@ -1623,7 +1623,7 @@ declare namespace Handsontable {
     beforeChange?: (changes: [number, string | number, any, any][], source: string) => void;
     beforeChangeRender?: (changes: any[], source: string) => void;
     beforeColumnMove?: (columns: number[], target: number) => void;
-    beforeColumnResize?: (currentColumn: number, newSize: number, isDoubleClick: boolean) => void;
+    beforeColumnResize?: (newSize: number, currentColumn: number, isDoubleClick: boolean) => void;
     beforeColumnSort?: (currentSortConfig: object[], destinationSortConfigs: object[]) => void;
     beforeContextMenuSetItems?: (menuItems: any[]) => void;
     beforeContextMenuShow?: (context: Handsontable.plugins.ContextMenu) => void;
@@ -1656,7 +1656,7 @@ declare namespace Handsontable {
     beforeRender?: (isForced: boolean, skipRender: object) => void;
     beforeRenderer?: (TD: Element, row: number, col: number, prop: string | number, value: string, cellProperties: GridSettings) => void;
     beforeRowMove?: (columns: number[], target: number) => void;
-    beforeRowResize?: (currentRow: number, newSize: number, isDoubleClick: boolean) => any;
+    beforeRowResize?: (newSize: number, currentRow: number, isDoubleClick: boolean) => any;
     beforeSetRangeEnd?: (coords: wot.CellCoords) => void;
     beforeSetRangeStart?: (coords: wot.CellCoords) => void;
     beforeSetRangeStartOnly?: (coords: wot.CellCoords) => void;

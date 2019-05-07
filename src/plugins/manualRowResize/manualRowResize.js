@@ -33,6 +33,7 @@ class ManualRowResize extends BasePlugin {
     this.startOffset = null;
     this.handle = document.createElement('DIV');
     this.guide = document.createElement('DIV');
+    this.tooltip = document.createElement('DIV');
     this.eventManager = new EventManager(this);
     this.pressed = null;
     this.dblclick = 0;
@@ -41,6 +42,7 @@ class ManualRowResize extends BasePlugin {
 
     addClass(this.handle, 'manualRowResizer');
     addClass(this.guide, 'manualRowResizerGuide');
+    addClass(this.tooltip, 'manualRowResizerTooltip');
   }
 
   /**
@@ -134,14 +136,31 @@ class ManualRowResize extends BasePlugin {
    *
    * @private
    * @param {HTMLCellElement} TH TH HTML element.
+   * @param {MouseEvent} event
    */
-  setupHandlePosition(TH) {
+  setupHandlePosition(TH, event) {
+    if (!TH.parentNode) {
+      return false;
+    }
+
+    let row = this.hot.view.wt.wtTable.getCoords(TH).row; // getCoords returns CellCoords
+    let box;
+
+    if (row > 0) {
+      box = TH.getBoundingClientRect();
+      const center = (box.top + box.bottom) / 2;
+      if (event.clientY < center) {
+        TH = TH.parentElement.previousElementSibling.firstChild;
+        row -= 1;
+        box = null;
+      }
+    }
+
     this.currentTH = TH;
-    const row = this.hot.view.wt.wtTable.getCoords(TH).row; // getCoords returns CellCoords
     const headerWidth = outerWidth(this.currentTH);
 
     if (row >= 0) { // if not col header
-      const box = this.currentTH.getBoundingClientRect();
+      box = box || this.currentTH.getBoundingClientRect();
 
       this.currentRow = row;
       this.selectedRows = [];
@@ -212,6 +231,33 @@ class ManualRowResize extends BasePlugin {
   }
 
   /**
+   * Sets the resize tooltip position and content.
+   *
+   * @private
+   */
+  setupTooltipPosition() {
+    const handleWidth = parseInt(outerWidth(this.handle), 10);
+    const handleRightPosition = parseInt(this.handle.style.left, 10) + handleWidth;
+    addClass(this.tooltip, 'active');
+
+    this.tooltip.innerText = `高度: ${(this.newSize * 3 / 4).toFixed(2)} (${this.newSize} 像素)`;
+
+    this.tooltip.style.top = this.handle.style.top;
+    this.tooltip.style.left = `${handleRightPosition}px`;
+    this.hot.rootElement.appendChild(this.tooltip);
+  }
+
+  /**
+   * Refresh the resize tooltip position and content.
+   *
+   * @private
+   */
+  refreshTooltipPosition() {
+    this.tooltip.innerText = `高度: ${(this.newSize * 3 / 4).toFixed(2)} (${this.newSize} 像素)`;
+    this.tooltip.style.top = this.handle.style.top;
+  }
+
+  /**
    * Hides both the resize handle and resize guide.
    *
    * @private
@@ -219,6 +265,7 @@ class ManualRowResize extends BasePlugin {
   hideHandleAndGuide() {
     removeClass(this.handle, 'active');
     removeClass(this.guide, 'active');
+    removeClass(this.tooltip, 'active');
   }
 
   /**
@@ -268,13 +315,25 @@ class ManualRowResize extends BasePlugin {
    * @param {MouseEvent} event
    */
   onMouseOver(event) {
-    if (this.checkIfRowHeader(event.target)) {
-      const th = this.getTHFromTargetElement(event.target);
+    if (!this.pressed) {
+      let th;
+
+      if (this.checkIfRowHeader(event.target)) {
+        th = this.getTHFromTargetElement(event.target);
+
+      } else if (hasClass(event.target, 'manualRowResizer')) {
+        const prevTH = this.hot.view.wt.wtTable.getRowHeader(this.currentRow - 1);
+        const nextTH = this.hot.view.wt.wtTable.getRowHeader(this.currentRow + 1);
+
+        if (prevTH && prevTH.getBoundingClientRect().bottom > event.clientY) {
+          th = prevTH;
+        } else if (nextTH && nextTH.getBoundingClientRect().top < event.clientY) {
+          th = nextTH;
+        }
+      }
 
       if (th) {
-        if (!this.pressed) {
-          this.setupHandlePosition(th);
-        }
+        this.setupHandlePosition(th, event);
       }
     }
   }
@@ -293,19 +352,19 @@ class ManualRowResize extends BasePlugin {
       this.hot.view.wt.wtOverlays.adjustElementsSize(true);
     };
     const resize = (selectedRow, forceRender) => {
-      const hookNewSize = this.hot.runHooks('beforeRowResize', selectedRow, this.newSize, true);
+      const hookNewSize = this.hot.runHooks('beforeRowResize', this.newSize, selectedRow, true);
 
       if (hookNewSize !== void 0) {
         this.newSize = hookNewSize;
       }
 
-      this.setManualSize(selectedRow, this.newSize); // double click sets auto row size
+      this.setManualSize(this.newSize, selectedRow); // double click sets auto row size
 
       if (forceRender) {
         render();
       }
 
-      this.hot.runHooks('afterRowResize', selectedRow, this.newSize, true);
+      this.hot.runHooks('afterRowResize', this.newSize, selectedRow, true);
     };
 
     if (this.dblclick >= 2) {
@@ -334,7 +393,11 @@ class ManualRowResize extends BasePlugin {
    */
   onMouseDown(event) {
     if (hasClass(event.target, 'manualRowResizer')) {
+      this.startY = pageY(event);
+      this.newSize = this.startHeight;
+
       this.setupGuidePosition();
+      this.setupTooltipPosition();
       this.pressed = this.hot;
 
       if (this.autoresizeTimeout === null) {
@@ -344,8 +407,6 @@ class ManualRowResize extends BasePlugin {
       }
 
       this.dblclick += 1;
-      this.startY = pageY(event);
-      this.newSize = this.startHeight;
     }
   }
 
@@ -360,11 +421,12 @@ class ManualRowResize extends BasePlugin {
       this.currentHeight = this.startHeight + (pageY(event) - this.startY);
 
       arrayEach(this.selectedRows, (selectedRow) => {
-        this.newSize = this.setManualSize(selectedRow, this.currentHeight);
+        this.newSize = this.setManualSize(this.currentHeight, selectedRow);
       });
 
       this.refreshHandlePosition();
       this.refreshGuidePosition();
+      this.refreshTooltipPosition();
     }
   }
 
@@ -372,18 +434,19 @@ class ManualRowResize extends BasePlugin {
    * 'mouseup' event callback - apply the row resizing.
    *
    * @private
+   * @param {MouseEvent} event
    *
    * @fires Hooks#beforeRowResize
    * @fires Hooks#afterRowResize
    */
-  onMouseUp() {
+  onMouseUp(event) {
     const render = () => {
       this.hot.forceFullRender = true;
       this.hot.view.render(); // updates all
       this.hot.view.wt.wtOverlays.adjustElementsSize(true);
     };
     const runHooks = (selectedRow, forceRender) => {
-      this.hot.runHooks('beforeRowResize', selectedRow, this.newSize);
+      this.hot.runHooks('beforeRowResize', this.newSize, selectedRow);
 
       if (forceRender) {
         render();
@@ -391,7 +454,7 @@ class ManualRowResize extends BasePlugin {
 
       this.saveManualRowHeights();
 
-      this.hot.runHooks('afterRowResize', selectedRow, this.newSize, false);
+      this.hot.runHooks('afterRowResize', this.newSize, selectedRow, false);
     };
     if (this.pressed) {
       this.hideHandleAndGuide();
@@ -412,7 +475,7 @@ class ManualRowResize extends BasePlugin {
         }
       }
 
-      this.setupHandlePosition(this.currentTH);
+      this.setupHandlePosition(this.currentTH, event);
     }
   }
 
@@ -422,27 +485,29 @@ class ManualRowResize extends BasePlugin {
    * @private
    */
   bindEvents() {
-    this.eventManager.addEventListener(this.hot.rootElement, 'mouseover', e => this.onMouseOver(e));
+    this.eventManager.addEventListener(this.hot.rootElement, 'mousemove', e => this.onMouseOver(e));
     this.eventManager.addEventListener(this.hot.rootElement, 'mousedown', e => this.onMouseDown(e));
     this.eventManager.addEventListener(window, 'mousemove', e => this.onMouseMove(e));
-    this.eventManager.addEventListener(window, 'mouseup', () => this.onMouseUp());
+    this.eventManager.addEventListener(window, 'mouseup', e => this.onMouseUp(e));
   }
 
   /**
    * Sets the new height for specified row index.
    *
-   * @param {Number} row Visual row index.
    * @param {Number} height Row height.
+   * @param {Number} row Visual row index.
    * @returns {Number} Returns new height.
    *
    * @fires Hooks#modifyRow
    */
-  setManualSize(row, height) {
-    const physicalRow = this.hot.runHooks('modifyRow', row);
+  setManualSize(height, row) {
+    const newHeight = Math.max(height, 0);
 
-    this.manualRowHeights[physicalRow] = height;
+    this.hot.runHooks('modifyRow', row);
 
-    return height;
+    // this.manualRowHeights[physicalRow] = newHeight;
+
+    return newHeight;
   }
 
   /**

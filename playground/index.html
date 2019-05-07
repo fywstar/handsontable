@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="stylesheet" type="text/css" href="../dist/handsontable.css">
+</head>
+
+<body>
+  <div id="example"></div>
+  <script src="../dist/handsontable.js"></script>
+  <script>
+    var data = [
+      ["", "Ford", "Tesla", "Toyota", "Honda"],
+      ["2017", 10, 11, 12, 13],
+      ["2018", 20, 11, 14, 13],
+      ["2019", 30, 15, 12, 13]
+    ];
+
+    var colWidths = [80, 80, 80, 80, 80];
+    var rowHeights = [25, 25, 25, 25];
+
+    var borderWidth = 1;
+    var borderColor = 'red';
+    var borderObj = {
+      width: borderWidth,
+      color: borderColor
+    };
+
+    function getData() {
+      var data = [];
+      for (var i = 0; i < 100; i++) {
+        var row = [];
+        data.push(row);
+        for (var j = 0; j < 100; j++) {
+          row.push(i + j);
+        }
+      }
+      return data;
+    }
+
+    function getBorders() {
+      var borders = [];
+      for (var i = 0; i < 4; i++) {
+        for (var j = 0; j < 5; j++) {
+          borders.push({row: i, col: j, top: borderObj, right: borderObj, bottom: borderObj, left: borderObj});
+        }
+      }
+      return borders;
+    }
+
+    var container = document.getElementById('example');
+    var hot = new Handsontable(container, {
+      data: data,
+      // 现在必须要有表头了，否则样式有问题
+      rowHeaders: true,
+      colHeaders: true,
+      // colWidths: 80,
+      // rowHeight: 25,
+      colWidths: function (index) {
+        return colWidths[index % colWidths.length];
+      },
+      rowHeights: function (index) {
+        return rowHeights[index % rowHeights.length];
+      },
+      manualRowResize: true,
+      manualColumnResize: true,
+      beforeRowResize: (newSize, currentRow, isDoubleClick) => {
+        rowHeights[currentRow] = newSize;
+      },
+      beforeColumnResize: (newSize, currentCol, isDoubleClick) => {
+        colWidths[currentCol] = newSize;
+      },
+      customBorders: getBorders(),
+      contextMenu: {
+        items: {
+          row_above: "row_above",
+          hsep1: "---------",
+          row_below: "row_below"
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>

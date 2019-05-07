@@ -103,9 +103,10 @@ class TableRenderer {
     }
     this.removeRedundantRows(rowsToRender);
 
-    if (!this.wtTable.isWorkingOnClone() || this.wot.isOverlayName(Overlay.CLONE_BOTTOM)) {
-      this.markOversizedRows();
-    }
+    // Don't calculate oversizedRows
+    // if (!this.wtTable.isWorkingOnClone() || this.wot.isOverlayName(Overlay.CLONE_BOTTOM)) {
+    //   this.markOversizedRows();
+    // }
     if (!this.wtTable.isWorkingOnClone()) {
       this.wot.wtViewport.createVisibleCalculators();
       this.wot.wtOverlays.refresh(false);
@@ -175,7 +176,7 @@ class TableRenderer {
     let TR;
     let visibleRowIndex = 0;
     let sourceRowIndex = this.rowFilter.renderedToSource(visibleRowIndex);
-    const isWorkingOnClone = this.wtTable.isWorkingOnClone();
+    // const isWorkingOnClone = this.wtTable.isWorkingOnClone();
 
     while (sourceRowIndex < totalRows && sourceRowIndex >= 0) {
       if (!performanceWarningAppeared && visibleRowIndex > 1000) {
@@ -196,12 +197,13 @@ class TableRenderer {
       // Render cells
       this.renderCells(sourceRowIndex, TR, columnsToRender);
 
-      if (!isWorkingOnClone ||
-          // Necessary to refresh oversized row heights after editing cell in overlays
-          this.wot.isOverlayName(Overlay.CLONE_BOTTOM)) {
-        // Reset the oversized row cache for this row
-        this.resetOversizedRow(sourceRowIndex);
-      }
+      // Don't calculate oversizedRows
+      // if (!isWorkingOnClone ||
+      //     // Necessary to refresh oversized row heights after editing cell in overlays
+      //     this.wot.isOverlayName(Overlay.CLONE_BOTTOM)) {
+      //   // Reset the oversized row cache for this row
+      //   this.resetOversizedRow(sourceRowIndex);
+      // }
 
       if (TR.firstChild) {
         // if I have 2 fixed columns with one-line content and the 3rd column has a multiline content, this is
@@ -212,6 +214,28 @@ class TableRenderer {
           // Decrease height. 1 pixel will be "replaced" by 1px border top
           height -= 1;
           TR.firstChild.style.height = `${height}px`;
+
+          if (!this.wot.wtTable.wtRootElement.parentNode.classList.contains('htMenu')) {
+            // 此处假设默认的行高21不被修改，即不会修改CSS中的样式
+            if (height < 22) {
+              TR.firstChild.style.lineHeight = `${height}px`;
+              let nextSibling = TR.firstChild.nextElementSibling;
+              while (nextSibling) {
+                nextSibling.style.height = `${height}px`;
+                nextSibling.style.lineHeight = `${height}px`;
+                nextSibling = nextSibling.nextElementSibling;
+              }
+
+              if (height === 0) {
+                TR.firstChild.style.border = 'none';
+                nextSibling = TR.firstChild.nextElementSibling;
+                while (nextSibling) {
+                  nextSibling.style.border = 'none';
+                  nextSibling = nextSibling.nextElementSibling;
+                }
+              }
+            }
+          }
         } else {
           TR.firstChild.style.height = '';
         }

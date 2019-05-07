@@ -117,34 +117,35 @@
   border-color: #FFF;
 }
 
-.handsontable th:first-child,
+/* .handsontable th:first-child,
 .handsontable th:nth-child(2),
-.handsontable td:first-of-type,
+.handsontable td:first-of-type, */
 .handsontable .htNoFrame + th,
 .handsontable .htNoFrame + td {
   border-left: 1px solid #CCC;
 }
 
-.handsontable.htRowHeaders thead tr th:nth-child(2) {
+/* .handsontable.htRowHeaders thead tr th:nth-child(2) {
   border-left: 1px solid #CCC;
-}
+} */
 
-.handsontable tr:first-child th,
-.handsontable tr:first-child td {
+/* .handsontable tr:first-child td, */
+.handsontable thead tr:first-child th {
   border-top: 1px solid #CCC;
 }
 
 .ht_master:not(.innerBorderLeft):not(.emptyColumns) ~ .handsontable tbody tr th,
 .ht_master:not(.innerBorderLeft):not(.emptyColumns) ~ .handsontable:not(.ht_clone_top) thead tr th:first-child {
-  border-right-width: 0;
+  /* border-right-width: 0; */
+  border-left: 1px solid #CCC;
 }
 
-.ht_master:not(.innerBorderTop) thead tr:last-child th,
+/* .ht_master:not(.innerBorderTop) thead tr:last-child th,
 .ht_master:not(.innerBorderTop) ~ .handsontable thead tr:last-child th,
 .ht_master:not(.innerBorderTop) thead tr.lastChild th,
 .ht_master:not(.innerBorderTop) ~ .handsontable thead tr.lastChild th {
   border-bottom-width: 0;
-}
+} */
 
 .handsontable th {
   background-color: #f0f0f0;
@@ -181,7 +182,7 @@
   top: 0;
   cursor: col-resize;
   z-index: 110;
-  width: 5px;
+  width: 11px;
   height: 25px;
 }
 
@@ -190,16 +191,16 @@
   left: 0;
   cursor: row-resize;
   z-index: 110;
-  height: 5px;
+  height: 11px;
   width: 50px;
 }
 
-.handsontable .manualColumnResizer:hover,
+/* .handsontable .manualColumnResizer:hover,
 .handsontable .manualColumnResizer.active,
 .handsontable .manualRowResizer:hover,
 .handsontable .manualRowResizer.active {
   background-color: #34a9db;
-}
+} */
 
 .handsontable .manualColumnResizerGuide {
   position: fixed;
@@ -225,6 +226,34 @@
 
 .handsontable .manualColumnResizerGuide.active,
 .handsontable .manualRowResizerGuide.active {
+  display: block;
+  z-index: 199;
+}
+
+.handsontable .manualColumnResizerTooltip {
+  top: 0;
+}
+
+.handsontable .manualRowResizerTooltip {
+  left: 0;
+}
+
+.handsontable .manualColumnResizerTooltip,
+.handsontable .manualRowResizerTooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: none;
+  padding: 6px 8px;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.75);
+  border-radius: 4px;
+  -webkit-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.handsontable .manualColumnResizerTooltip.active,
+.handsontable .manualRowResizerTooltip.active {
   display: block;
   z-index: 199;
 }
